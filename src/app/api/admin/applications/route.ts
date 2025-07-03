@@ -2,15 +2,11 @@ import { NextResponse, type NextRequest } from 'next/server';
 import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 
-
+// --- Re-using the same DB connection and Mongoose model ---
 async function connectToDb() {
-  if (mongoose.connection.readyState >= 1) {
-    return;
-  }
-  if (!process.env.MONGO_URI) {
-    throw new Error('MONGO_URI environment variable is not defined.');
-  }
-  return mongoose.connect(process.env.MONGO_URI);
+  if (mongoose.connection.readyState >= 1) return;
+  if (!process.env.MONGO_URI) throw new Error('MONGO_URI not defined');
+  await mongoose.connect(process.env.MONGO_URI);
 }
 
 const ApplicationSchema = new mongoose.Schema({
@@ -27,30 +23,75 @@ const ApplicationSchema = new mongoose.Schema({
 
 const Application = mongoose.models.Application || mongoose.model('Application', ApplicationSchema, 'Praetorian');
 
-export async function GET(request: NextRequest) { 
-  try {
+// --- Helper to verify JWT ---
+function verifyAuth(request: NextRequest) {
     const token = request.cookies.get('admin-auth-token')?.value;
-
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    if (!process.env.JWT_SECRET) {
-      throw new Error('JWT_SECRET is not configured on the server.');
-    }
+    if (!token) throw new Error('Unauthorized');
+    if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET not configured');
     jwt.verify(token, process.env.JWT_SECRET);
+}
 
+// --- API Handler to UPDATE a specific application ---
+// DEFINITIVE FIX: This version manually extracts the ID from the request URL
+// to bypass the strict type-checking issues on Vercel's build environment.
+export async function PUT(request: NextRequest) {
+    try {
+        verifyAuth(request); // Protect the route
+        
+        // Extract the ID from the last segment of the URL path
+        const id = request.nextUrl.pathname.split('/').pop();
+        if (!id) {
+            return NextResponse.json({ error: 'Application ID missing from URL' }, { status: 400 });
+        }
 
-    await connectToDb();
-    const applications = await Application.find({}).sort({ submissionDate: -1 });
+        const body = await request.json();
 
-    return NextResponse.json({ applications });
+        await connectToDb();
+        
+        const updatedApplication = await Application.findByIdAndUpdate(id, body, { new: true });
 
-  } catch (error: any) {
-    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
-      return NextResponse.json({ error: 'Unauthorized: Invalid token' }, { status: 401 });
+        if (!updatedApplication) {
+            return NextResponse.json({ error: 'Application not found' }, { status: 404 });
+        }
+
+        return NextResponse.json({ message: 'Application updated successfully', application: updatedApplication });
+
+    } catch (error) {
+        if (error instanceof Error && error.message === 'Unauthorized') {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+        console.error("Update Application Error:", error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-    console.error("Failed to fetch applications:", error);
-    return NextResponse.json({ error: 'An internal server error occurred.' }, { status: 500 });
-  }
+}
+
+
+// --- API Handler to DELETE a specific application ---
+export async function DELETE(request: NextRequest) {
+    try {
+        verifyAuth(request); // Protect the route
+        
+        // Extract the ID from the last segment of the URL path
+        const id = request.nextUrl.pathname.split('/').pop();
+        if (!id) {
+            return NextResponse.json({ error: 'Application ID missing from URL' }, { status: 400 });
+        }
+
+        await connectToDb();
+        
+        const deletedApplication = await Application.findByIdAndDelete(id);
+
+        if (!deletedApplication) {
+            return NextResponse.json({ error: 'Application not found' }, { status: 404 });
+        }
+
+        return NextResponse.json({ message: 'Application deleted successfully' });
+
+    } catch (error) {
+        if (error instanceof Error && error.message === 'Unauthorized') {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+        console.error("Delete Application Error:", error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
 }
