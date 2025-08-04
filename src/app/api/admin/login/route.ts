@@ -2,23 +2,30 @@ import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { serialize } from 'cookie';
 
-// --- list of authorized administrators ---
-const authorizedUsers = {
-  'stanley.teguh@binus.ac.id': 'DTgKPUeoNX4kACm',
-  'nico.hariyanto@binus.ac.id': 'qasMaAqyU0lRPP6',
-  'sandy.alamsyah@binus.ac.id': 'SU4WIgp3Bl3NOlk',
-  'arian.febrian@binus.ac.id': 'SelmHyv4u2YsSsy',
-  'brhanselino.edipurtta@binus.ac.id': 'h6gWwT6IBqADL35',
-  'kevin.handoyo001@binus.ac.id': 'ENmFIyJA2krgiVy',
-  'reynard.wijaya005@binus.ac.id': 'ksaHmslX3VD497G',
-  'alexander.budianto@binus.ac.id': 'glsT8TW9IGMqjWz',
+type AuthorizedUsers = {
+  [key: string]: string;
 };
 
-// --- The Main API Handler for Login ---
+let authorizedUsers: AuthorizedUsers = {};
+
+if (process.env.AUTHORIZED_USERS_JSON) {
+  try {
+    authorizedUsers = JSON.parse(process.env.AUTHORIZED_USERS_JSON);
+  } catch (error) {
+    console.error("Failed to parse AUTHORIZED_USERS_JSON:", error);
+  }
+}
+
 export async function POST(request: Request) {
+  const jwtSecret = process.env.JWT_SECRET;
+
+  if (!jwtSecret) {
+    console.error("JWT_SECRET environment variable is not set.");
+    return NextResponse.json({ error: 'Server configuration error.' }, { status: 500 });
+  }
+
   try {
     const { email, password } = await request.json();
-
 
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password are required.' }, { status: 400 });
@@ -31,15 +38,15 @@ export async function POST(request: Request) {
 
     const token = jwt.sign(
       { email: email },
-      process.env.JWT_SECRET || 'your-default-secret-key-for-development',
-      { expiresIn: '1d' } // Token expires in 1 day
+      jwtSecret,
+      { expiresIn: '1d' }
     );
 
     const cookie = serialize('admin-auth-token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV !== 'development', 
-      maxAge: 60 * 60 * 24, // 1 day in seconds
-      path: '/', 
+      secure: process.env.NODE_ENV !== 'development',
+      maxAge: 60 * 60 * 24, // 1 day
+      path: '/',
     });
 
     return new NextResponse(JSON.stringify({ success: true }), {
