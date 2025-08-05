@@ -1,9 +1,9 @@
-'use client'; 
+'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Papa from 'papaparse';
-import { Search, ArrowUpDown, ExternalLink, LogOut, Loader2, ShieldX, Trash2, Edit, Download, Filter, XCircle } from 'lucide-react';
+import { Search, ArrowUpDown, ExternalLink, LogOut, Loader2, ShieldX, Trash2, Edit, Download, Filter, XCircle, Power, PowerOff } from 'lucide-react';
 
 interface IApplication {
   _id: string;
@@ -35,6 +35,12 @@ export default function AdminDashboardPage() {
   const [editingApp, setEditingApp] = useState<IApplication | null>(null);
   const [deletingApp, setDeletingApp] = useState<IApplication | null>(null);
 
+  // --- NEW: State for Recruitment Toggle ---
+  const [isRecruitmentOpen, setIsRecruitmentOpen] = useState<boolean | null>(null);
+  const [isToggling, setIsToggling] = useState(false);
+  const [toggleError, setToggleError] = useState('');
+
+  // --- Effect to fetch applications (existing) ---
   useEffect(() => {
     const fetchApplications = async () => {
       setIsLoading(true);
@@ -59,9 +65,43 @@ export default function AdminDashboardPage() {
     fetchApplications();
   }, [router]);
 
+  // --- NEW: Effect to fetch recruitment status ---
+  useEffect(() => {
+    const fetchRecruitmentStatus = async () => {
+      try {
+        const response = await fetch('/api/recruitment-status');
+        if (!response.ok) throw new Error('Failed to fetch status');
+        const data = await response.json();
+        setIsRecruitmentOpen(data.isRecruitmentOpen);
+      } catch (err) {
+        setToggleError(err instanceof Error ? err.message : 'An unknown error occurred.');
+      }
+    };
+    fetchRecruitmentStatus();
+  }, []);
+
   const handleLogout = async () => {
     await fetch('/api/admin/logout', { method: 'POST' });
     router.push('/admin/login');
+  };
+
+  // --- NEW: Handler for toggling recruitment status ---
+  const handleToggleRecruitment = async () => {
+    setIsToggling(true);
+    setToggleError('');
+    try {
+      const response = await fetch('/api/admin/recruitment', { method: 'POST' });
+      if (!response.ok) throw new Error('Server responded with an error');
+      
+      const data = await response.json();
+      if (data.success) {
+        setIsRecruitmentOpen(data.isRecruitmentOpen);
+      }
+    } catch (err) {
+      setToggleError(err instanceof Error ? err.message : 'Failed to update status.');
+    } finally {
+      setIsToggling(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -171,17 +211,47 @@ export default function AdminDashboardPage() {
                   <p className="text-gray-400 mt-1">Showing {filteredAndSortedApplications.length} of {applications.length} total applications.</p>
               </div>
               <div className="flex items-center gap-2 w-full md:w-auto flex-wrap">
-                  {/* Search Bar */}
                   <div className="relative flex-grow md:flex-grow-0"><input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search..." className="w-full pl-10 pr-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-[#00a9e0] focus:border-[#00a9e0]" /><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" /></div>
-                  {/* Filter Dropdowns */}
                   <MultiSelectFilter title="Filter by Class" options={LNT_CLASSES_AND_POSITIONS} selectedOptions={selectedClasses} setSelectedOptions={setSelectedClasses} />
                   <MultiSelectFilter title="Filter by Position" options={LNT_CLASSES_AND_POSITIONS} selectedOptions={selectedPositions} setSelectedOptions={setSelectedPositions} />
-                  {/* Download Button */}
                   <button onClick={handleDownloadCSV} className="flex items-center gap-2 px-4 py-2 bg-sky-600/80 hover:bg-sky-600 rounded-lg transition-colors flex-shrink-0"><Download className="h-5 w-5" />Export</button>
-                  {/* Logout Button */}
                   <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 bg-red-600/80 hover:bg-red-600 rounded-lg transition-colors flex-shrink-0"><LogOut className="h-5 w-5" />Logout</button>
               </div>
           </div>
+          
+          {/* --- NEW: Recruitment Control Panel --- */}
+          <div className="mb-8 p-6 bg-gray-800/50 backdrop-blur-xl border border-gray-700/50 shadow-xl rounded-lg">
+            <h2 className="text-xl font-bold text-white mb-3">Recruitment Control</h2>
+            {isRecruitmentOpen === null && !toggleError ? (
+                <div className="flex items-center gap-2 text-gray-400"> <Loader2 className="h-5 w-5 animate-spin" /> Loading status... </div>
+            ) : (
+                <div className="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between gap-4">
+                    <div>
+                        <p className="text-gray-400 text-sm">Public Form Status</p>
+                        <p className={`text-2xl font-bold ${isRecruitmentOpen ? 'text-green-400' : 'text-red-400'}`}>
+                            {isRecruitmentOpen ? 'Open' : 'Closed'}
+                        </p>
+                    </div>
+                    <button
+                        onClick={handleToggleRecruitment}
+                        disabled={isToggling}
+                        className={`w-full sm:w-auto flex items-center justify-center px-4 py-3 font-bold rounded-md transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-wait ${
+                            isRecruitmentOpen ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'
+                        }`}
+                        >
+                        {isToggling ? (
+                            <Loader2 className="h-6 w-6 animate-spin" />
+                        ) : isRecruitmentOpen ? (
+                            <><PowerOff className="mr-2 h-5 w-5" /> Close Recruitment</>
+                        ) : (
+                            <><Power className="mr-2 h-5 w-5" /> Open Recruitment</>
+                        )}
+                    </button>
+                </div>
+            )}
+            {toggleError && <p className="text-red-500 mt-2 text-sm">{toggleError}</p>}
+          </div>
+
 
           {/* Table */}
           <div className="bg-gray-800/50 backdrop-blur-xl border border-gray-700/50 shadow-2xl rounded-lg overflow-x-auto">

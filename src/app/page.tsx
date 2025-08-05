@@ -295,18 +295,30 @@ export default function App() {
   const [message, setMessage] = useState('');
   const [showThankYou, setShowThankYou] = useState(false);
   const [activeSection, setActiveSection] = useState('');
-  const [isRecruitmentOpen, setIsRecruitmentOpen] = useState(true);
+  
+  // --- MODIFICATION 1: Update state to handle loading ---
+  const [isRecruitmentOpen, setIsRecruitmentOpen] = useState<boolean | null>(null);
+
+  // --- MODIFICATION 2: Replace date-check with API call ---
+  useEffect(() => {
+    // This new effect fetches the live status from our API.
+    const fetchStatus = async () => {
+        try {
+            const response = await fetch('/api/recruitment-status');
+            if (!response.ok) throw new Error(); // Simple error trigger
+            const data = await response.json();
+            setIsRecruitmentOpen(data.isRecruitmentOpen);
+        } catch (error) {
+            // If the API fails for any reason, default to closed for safety.
+            setIsRecruitmentOpen(false);
+        }
+    };
+    fetchStatus();
+  }, []); // Runs once when the component loads
+
 
   useEffect(() => {
-    // Set recruitment closing date (Year, Month (0-indexed), Day)
-    // Closes ON August 5th, so any time on or after this date will close it.
-    const closingDate = new Date(2025, 7, 5); // Month is 0-indexed, so 7 is August.
-    const now = new Date();
-    
-    if (now >= closingDate) {
-      setIsRecruitmentOpen(false);
-    }
-
+    // This effect now only handles UI setup like title and scroll observers.
     document.title = "BNCC LnT - Open Recruitment";
     let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
     if (!link) {
@@ -465,7 +477,7 @@ export default function App() {
   ];
 
   const getButtonContent = () => {
-    if (!isRecruitmentOpen) return 'Recruitment Closed';
+    if (isRecruitmentOpen === false) return 'Recruitment Closed'; // Check for explicit false
     switch (status) {
       case 'loading': return <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Submitting...</>;
       case 'success': return <><CheckCircle2 className="mr-2 h-5 w-5" /> Submitted!</>;
@@ -548,7 +560,14 @@ export default function App() {
                   </div>
                   <div className="bg-gray-800/30 backdrop-blur-xl border border-gray-700/50 p-8 rounded-2xl shadow-2xl">
                     <h2 className="text-2xl font-bold text-white mb-6 text-center">APPLICATION FORM</h2>
-                    {isRecruitmentOpen ? (
+                    
+                    {/* --- MODIFICATION 3: Handle all 3 states (loading, open, closed) --- */}
+                    {isRecruitmentOpen === null ? (
+                        <div className="text-center py-10">
+                            <Loader2 className="h-16 w-16 mx-auto text-gray-500 mb-4 animate-spin" />
+                            <h3 className="text-2xl font-bold text-white">Loading Recruitment Status...</h3>
+                        </div>
+                    ) : isRecruitmentOpen ? (
                         <form ref={formRef} onSubmit={handleInitialSubmit} className="space-y-4">
                         {showConfirmModal && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm transition-opacity duration-300">
@@ -556,6 +575,7 @@ export default function App() {
                             <h2 className="text-2xl font-bold text-white mb-4 text-center">Confirm Your Data</h2>
                             <div className="text-gray-300 space-y-2 text-sm">
                                 <p><strong>Full Name:</strong> {formData.fullName}</p>
+
                                 <p><strong>NIM:</strong> {formData.nim}</p>
                                 <p><strong>Major:</strong> {formData.major}</p>
                                 <p><strong>LnT Class:</strong> {formData.lntClass}</p>
@@ -610,7 +630,7 @@ export default function App() {
                             <a href="https://media.developeracademy.id/docs/NamaLengkap_CV_Academy.docx" target="_blank" rel="noopener noreferrer" className="text-xs text-sky-400 hover:underline mt-1 inline-block">Download CV Template</a>
                         </div>
                         <div>
-                            <button type="submit" disabled={status === 'loading' || !isRecruitmentOpen} className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-bold text-white bg-[#00a9e0] hover:bg-sky-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-sky-500 transition-all duration-300 transform hover:scale-105 disabled:opacity-70 disabled:scale-100 disabled:cursor-not-allowed">
+                            <button type="submit" disabled={status === 'loading' || isRecruitmentOpen === false} className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-bold text-white bg-[#00a9e0] hover:bg-sky-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-sky-500 transition-all duration-300 transform hover:scale-105 disabled:opacity-70 disabled:scale-100 disabled:cursor-not-allowed">
                             {getButtonContent()}
                             </button>
                         </div>
