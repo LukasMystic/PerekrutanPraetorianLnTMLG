@@ -168,9 +168,11 @@ const ThankYouPage = ({ onBack }: { onBack: () => void }) => {
         <div className="relative z-10">
           <CheckCircle className="h-20 w-20 mx-auto mb-6 text-green-400" />
           <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-white drop-shadow-lg">Thank You!</h1>
-          <p className="mt-4 text-lg text-gray-300">Your application has been successfully submitted. We've received your details and will review them shortly.</p>
+          {/* FIX: Escaped apostrophe in "We've" */}
+          <p className="mt-4 text-lg text-gray-300">Your application has been successfully submitted. We&apos;ve received your details and will review them shortly.</p>
           <div className="my-8 h-px bg-gray-700/50"></div>
-          <h2 className="text-xl font-bold text-white">What's Next?</h2>
+           {/* FIX: Escaped apostrophe in "What's" */}
+          <h2 className="text-xl font-bold text-white">What&apos;s Next?</h2>
           <p className="mt-2 text-gray-400">
             To complete your application, it is <strong>mandatory</strong> to join our official WhatsApp group for further announcements and the next stages of the recruitment process.
           </p>
@@ -296,10 +298,8 @@ export default function App() {
   const [showThankYou, setShowThankYou] = useState(false);
   const [activeSection, setActiveSection] = useState('');
   
-  // --- MODIFICATION 1: Update state to handle loading ---
   const [isRecruitmentOpen, setIsRecruitmentOpen] = useState<boolean | null>(null);
 
-  // --- MODIFICATION 2: Replace date-check with API call ---
   useEffect(() => {
     // This new effect fetches the live status from our API.
     const fetchStatus = async () => {
@@ -477,7 +477,6 @@ export default function App() {
   ];
 
   const getButtonContent = () => {
-    if (isRecruitmentOpen === false) return 'Recruitment Closed'; // Check for explicit false
     switch (status) {
       case 'loading': return <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Submitting...</>;
       case 'success': return <><CheckCircle2 className="mr-2 h-5 w-5" /> Submitted!</>;
@@ -508,7 +507,8 @@ export default function App() {
           <AnimatedSection id="about" className="pt-16 md:pt-24">
             <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">About The <span className="text-[#00a9e0]">Learning & Training</span> Division</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-              <div className="bg-gray-800/30 backdrop-blur-xl border border-gray-700/50 p-8 rounded-2xl"><Rocket className="h-10 w-10 mx-auto mb-4 text-[#00a9e0]" /><h3 className="text-xl font-bold mb-2">Who We Are</h3><p className="text-gray-400">The Learning & Training (LnT) division is the core of BNCC's educational mission. We are a passionate team dedicated to designing and delivering high-quality tech training for all BNCC members.</p></div>
+              {/* FIX: Escaped apostrophe in "BNCC's" */}
+              <div className="bg-gray-800/30 backdrop-blur-xl border border-gray-700/50 p-8 rounded-2xl"><Rocket className="h-10 w-10 mx-auto mb-4 text-[#00a9e0]" /><h3 className="text-xl font-bold mb-2">Who We Are</h3><p className="text-gray-400">The Learning & Training (LnT) division is the core of BNCC&apos;s educational mission. We are a passionate team dedicated to designing and delivering high-quality tech training for all BNCC members.</p></div>
               <div className="bg-gray-800/30 backdrop-blur-xl border border-gray-700/50 p-8 rounded-2xl"><Target className="h-10 w-10 mx-auto mb-4 text-[#00a9e0]" /><h3 className="text-xl font-bold mb-2">Our Mission</h3><p className="text-gray-400">To empower BNCC members with relevant IT skills through continuous learning, fostering a culture of knowledge-sharing, and preparing them for the competitive tech industry.</p></div>
               <div className="bg-gray-800/30 backdrop-blur-xl border border-gray-700/50 p-8 rounded-2xl"><Eye className="h-10 w-10 mx-auto mb-4 text-[#00a9e0]" /><h3 className="text-xl font-bold mb-2">Our Vision</h3><p className="text-gray-400">To be the leading student-driven IT training organization in Indonesia that actively develops competent and innovative technology enthusiasts.</p></div>
             </div>
@@ -561,7 +561,6 @@ export default function App() {
                   <div className="bg-gray-800/30 backdrop-blur-xl border border-gray-700/50 p-8 rounded-2xl shadow-2xl">
                     <h2 className="text-2xl font-bold text-white mb-6 text-center">APPLICATION FORM</h2>
                     
-                    {/* --- MODIFICATION 3: Handle all 3 states (loading, open, closed) --- */}
                     {isRecruitmentOpen === null ? (
                         <div className="text-center py-10">
                             <Loader2 className="h-16 w-16 mx-auto text-gray-500 mb-4 animate-spin" />
@@ -575,7 +574,6 @@ export default function App() {
                             <h2 className="text-2xl font-bold text-white mb-4 text-center">Confirm Your Data</h2>
                             <div className="text-gray-300 space-y-2 text-sm">
                                 <p><strong>Full Name:</strong> {formData.fullName}</p>
-
                                 <p><strong>NIM:</strong> {formData.nim}</p>
                                 <p><strong>Major:</strong> {formData.major}</p>
                                 <p><strong>LnT Class:</strong> {formData.lntClass}</p>
@@ -630,8 +628,8 @@ export default function App() {
                             <a href="https://media.developeracademy.id/docs/NamaLengkap_CV_Academy.docx" target="_blank" rel="noopener noreferrer" className="text-xs text-sky-400 hover:underline mt-1 inline-block">Download CV Template</a>
                         </div>
                         <div>
-                            <button type="submit" disabled={status === 'loading' || isRecruitmentOpen === false} className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-bold text-white bg-[#00a9e0] hover:bg-sky-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-sky-500 transition-all duration-300 transform hover:scale-105 disabled:opacity-70 disabled:scale-100 disabled:cursor-not-allowed">
-                            {getButtonContent()}
+                            <button type="submit" disabled={status === 'loading'} className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-bold text-white bg-[#00a9e0] hover:bg-sky-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-sky-500 transition-all duration-300 transform hover:scale-105 disabled:opacity-70 disabled:scale-100 disabled:cursor-not-allowed">
+                                {getButtonContent()}
                             </button>
                         </div>
                         {status === 'error' && (<p className="text-center text-sm font-medium text-red-400">{message}</p>)}
